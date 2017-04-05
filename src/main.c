@@ -912,25 +912,29 @@ static void OOBTask(void *pvParameters)
 //****************************************************************************
 static void DataGatherTask(void *pvParameters)
 {
+
 	TickType_t xLastWakeTime;
-	const TickType_t xFreq = 3000; // 60 seconds
+	const TickType_t xFreq = 30000; // 60 seconds
 
 	xLastWakeTime = xTaskGetTickCount();
 
 	float temperature;
 	float humidity;
 	float light;
-	unsigned int pm01;
-	unsigned int pm2_5;
-	unsigned int pm10;
+	int pm01;
+	int pm2_5;
+	int pm10;
 	unsigned char pm_buf[24];
+
 
 
 
 	int i = 0;
 	while (1)
 	{
+		GPIO_IF_LedOn(MCU_STAT_1_LED_GPIO);
 		vTaskDelayUntil(&xLastWakeTime, xFreq);
+		GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
 
 		// Gather i2c sensor data
 		I2C_IF_Open(I2C_MASTER_MODE_FST);
@@ -941,23 +945,46 @@ static void DataGatherTask(void *pvParameters)
 
 		//TODO CO/NO2
 		I2C_IF_Close(I2C_MASTER_MODE_FST);
+		GetPMS3003Result(pm_buf);
 
-		InitPMS();
+
+
+
 
 
 		// Gather uart sensor data
 		//TODO GPS
 		//TODO PMS
 		pm01 = GetPM01(pm_buf);
-		pm2_5 = GetPM2_5(pm_buf);
+		pm2_5 =GetPM2_5(pm_buf);
 		pm10 = GetPM10(pm_buf);
 
 
 		// Write data to uSD card
-		char *csv = (char*)malloc(50 * sizeof(char));
-		sprintf(csv, "%i,%f,%f,%f,%u,%u,%u\r\n", i++, temperature, humidity, light,pm01, pm2_5, pm10);
-		//Message("%f,%f,%f", temperature, humidity, light);
-		//Message("\n\n\rWriting sensor data to file...\n\r");
+		//old way:
+
+		//char n[100];
+		//int btw;
+		//btw = snprintf(n,100, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
+//		int btw = (sizeof(i)+
+//				   sizeof(temperature)+
+//				   sizeof(humidity)+
+//				   sizeof(light)+
+//				   sizeof(pm01)+
+//				   sizeof(pm2_5)+
+//				   sizeof(pm10)+
+//				   10*sizeof(char));
+
+		char *csv = (char*)malloc(50* sizeof(char));
+//		char *csv = 0;
+		//char csv [btw];
+		//btw = snprintf(buf, 100, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
+		sprintf(csv, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
+		int btw = strlen(csv);
+		//char csv[4];
+		//sprintf(csv,"%u\n\r",pm10);
+
+
 		//TODO create file for each new day using GPS
 		// this will propose a problem though if date doesnt get set
 		f_mount(&fs, "", 0);
@@ -965,7 +992,7 @@ static void DataGatherTask(void *pvParameters)
 		res = f_append(&fp, "logfile.txt");
 		if (res == FR_OK) {
 			/* Append a line */
-			res = f_write(&fp,csv,50,&Size);
+			res = f_write(&fp,csv,btw,&Size);
 			//Report("Wrote : %d Bytes",Size);
 			/* Close the file */
 			res = f_close(&fp);
@@ -1141,7 +1168,8 @@ void main()
     // UART Init
 
     //InitTerm();
-    
+    InitPMS();
+
     // uSD Init
     SDInit();
 
@@ -1150,9 +1178,11 @@ void main()
 
     // LED Init
     GPIO_IF_LedConfigure(STATLED1);
+    GPIO_IF_LedConfigure(STATLED2);
       
     // Turn Off the LEDs
     GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
+    GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 
     // Simplelink Spawn Task
     VStartSimpleLinkSpawnTask(SPAWN_TASK_PRIORITY);

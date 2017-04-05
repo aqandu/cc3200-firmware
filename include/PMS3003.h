@@ -15,16 +15,16 @@ extern "C"
 
 #define UART1_BAUD_RATE 9600
 #define SYSCLK          80000000
-#define PMS             UARTA0_BASE
-#define PMS_PERIPH      PRCM_UARTA0
+#define PMS             UARTA1_BASE
+#define PMS_PERIPH      PRCM_UARTA1
 #define PMS_BUFFER_LENGTH 24
 
 extern void InitPMS(void);
-extern void FillBuffer(unsigned char*);
-extern unsigned int CheckSum(unsigned char*);
-unsigned int GetPM01(unsigned char*);
-unsigned int GetPM2_5(unsigned char*);
-unsigned int GetPM10(unsigned char*);
+extern void GetPMS3003Result(unsigned char*);
+extern  int CheckSum(unsigned char*);
+int GetPM01(unsigned char*);
+int GetPM2_5(unsigned char*);
+int GetPM10(unsigned char*);
 
 #ifdef __cplusplus
 }

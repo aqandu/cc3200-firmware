@@ -56,7 +56,7 @@ InitPMS()
 }
 
 void
-FillBuffer(unsigned char *buf)
+GetPMS3003Result(unsigned char *buf)
 {
 
     int i;
@@ -73,12 +73,12 @@ FillBuffer(unsigned char *buf)
     }
 }
 
-unsigned int
+int
 CheckSum(unsigned char *buf)
 {
-    unsigned int check_sum = (buf[BUFFER_LENGTH-2]<<8)|(buf[BUFFER_LENGTH-1]);
-    unsigned int sum = 0;
-    int i;
+    int check_sum = (buf[BUFFER_LENGTH-2]*256)+(buf[BUFFER_LENGTH-1]);
+    int sum = 0;
+    unsigned int i;
 
     for(i=0;i<BUFFER_LENGTH-2;i++){
         sum += buf[i];
@@ -91,26 +91,20 @@ CheckSum(unsigned char *buf)
 
 }
 
-unsigned int
+int
 GetPM01(unsigned char *buf)
 {
-    unsigned int PM = 0x0000;
-    PM = (buf[PM01_HIGH]<<8)|(buf[PM01_LOW]);
-    return PM;
+	return (buf[PM01_HIGH]*256)+(buf[PM01_LOW]);
 }
 
-unsigned int
+int
 GetPM2_5(unsigned char *buf)
 {
-    unsigned int PM = 0x0000;
-    PM = (buf[PM2_5_HIGH]<<8)|(buf[PM2_5_LOW]);
-    return PM;
+	return (buf[PM2_5_HIGH]*256)+(buf[PM2_5_LOW]);
 }
 
-unsigned int
+int
 GetPM10(unsigned char *buf)
 {
-    unsigned int PM = 0x0000;
-    PM = (buf[PM10_HIGH]<<8)|(buf[PM10_LOW]);
-    return PM;
+    return (buf[PM10_HIGH]*256)+(buf[PM10_LOW]);
 }
