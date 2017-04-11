@@ -21,17 +21,22 @@
 
 // OS includes
 #include "osi.h"
+#include "flc_api.h"
+#include "ota_api.h"
 #include "freertos.h"
 #include "task.h"
 
 // Common interface includes
+#include "common.h"
 #include "gpio_if.h"
 #include "uart_if.h"
 #include "i2c_if.h"
-#include "common.h"
+#include "network_if.h"
+
 
 // App Includes
 #include "hooks.h"
+#include "handlers.h"
 #include "sdhost.h"
 #include "ff.h"
 #include "HDC1080.h"
@@ -48,18 +53,18 @@
 #define APP_NAME                         "AirU-Firmware"
 
 #define FILE         "test.txt"
-    FIL fp;
-    FATFS fs;
-    FRESULT res;
-    DIR dir;
-    UINT Size;
+FIL fp;
+FATFS fs;
+FRESULT res;
+DIR dir;
+UINT Size;
 
-#define OOB_TASK_PRIORITY                1
+#define OTA_TASK_PRIORITY                1
 #define DATAGATHER_TASK_PRIORITY		 3
 #define DATAUPLOAD_TASK_PRIORITY         2
 #define SPAWN_TASK_PRIORITY              9
 
-#define OSI_STACK_SIZE                   4096 //2048
+#define OSI_STACK_SIZE                  2048
 
 #define AP_SSID_LEN_MAX                 32
 #define SH_GPIO_3                       3       /* P58 - Device Mode */
@@ -76,6 +81,24 @@ typedef enum
 //*****************************************************************************
 //                 GLOBAL VARIABLES -- Start
 //*****************************************************************************
+
+#define OTA_SERVER_NAME                 "api.dropbox.com"
+#define OTA_SERVER_IP_ADDRESS           0x00000000
+#define OTA_SERVER_SECURED              1
+#define OTA_SERVER_REST_UPDATE_CHK      "/2/files/get_metadata/" // returns files/folder list
+#define OTA_SERVER_REST_RSRC_METADATA   "/2/files/get_temporary_link/"     // returns A url that serves the media directly
+#define OTA_SERVER_REST_HDR             "Authorization: Bearer "
+#define OTA_SERVER_REST_HDR_VAL         "NtJxfXoFAzAAAAAAAAAACYbDIBby7z7Nuh-N-0pG9l-z2hFkjygHDPCV7TgaNgJ1"
+#define LOG_SERVER_NAME                 "api-content.dropbox.com"
+#define OTA_SERVER_REST_FILES_PUT       "/2/files/upload"
+#define OTA_VENDOR_STRING               "Vid01_Pid00_Ver00"
+
+int OTAServerInfoSet(void **pvOtaApp, char *vendorStr);
+static void RebootMCU();
+
+static OtaOptServerInfo_t g_otaOptServerInfo;
+static void *pvOtaApp;
+
 static const char pcDigits[] = "0123456789";
 static unsigned char POST_token[] = "__SL_P_ULD";
 static unsigned char GET_token_TEMP[]  = "__SL_G_UTP";
@@ -102,53 +125,23 @@ extern uVectorEntry __vector_table;
 
 //*****************************************************************************
 //
-//! itoa
+//! Application startup display on UART
 //!
-//!    @brief  Convert integer to ASCII in decimal base
+//! \param  none
 //!
-//!     @param  cNum is input integer number to convert
-//!     @param  cString is output string
+//! \return none
 //!
-//!     @return number of ASCII parameters
-//!
-//!
-//
 //*****************************************************************************
-static unsigned short itoa(char cNum, char *cString)
+static void
+DisplayBanner(char * AppName)
 {
-    char* ptr;
-    char uTemp = cNum;
-    unsigned short length;
-
-    // value 0 is a special case
-    if (cNum == 0)
-    {
-        length = 1;
-        *cString = '0';
-
-        return length;
-    }
-
-    // Find out the length of the number, in decimal base
-    length = 0;
-    while (uTemp > 0)
-    {
-        uTemp /= 10;
-        length++;
-    }
-
-    // Do the actual formatting, right to left
-    uTemp = cNum;
-    ptr = cString + length;
-    while (uTemp > 0)
-    {
-        --ptr;
-        *ptr = pcDigits[uTemp % 10];
-        uTemp /= 10;
-    }
-
-    return length;
+    UART_PRINT("\n\n\n\r");
+    UART_PRINT("\t\t *************************************************\n\r");
+    UART_PRINT("\t\t      CC3200 %s Application       \n\r", AppName);
+    UART_PRINT("\t\t *************************************************\n\r");
+    UART_PRINT("\n\n\n\r");
 }
+
 
 
 //*****************************************************************************
@@ -856,50 +849,92 @@ static void ReadDeviceConfiguration()
 
 //****************************************************************************
 //
-//!    \brief OOB Application Main Task - Initializes SimpleLink Driver and
+//!    \brief OTA Application Main Task - Initializes SimpleLink Driver and
 //!                                              Handles HTTP Requests
 //! \param[in]                  pvParameters is the data passed to the Task
 //!
 //! \return                        None
 //
 //****************************************************************************
-static void OOBTask(void *pvParameters)
+static void OTATask(void *pvParameters)
 {
-    long   lRetVal = -1;
+	long lRetVal = -1;
 
-    // Read Device Mode Configuration
-    ReadDeviceConfiguration();
+	long OptionLen;
+	unsigned char OptionVal;
+	int SetCommitInt;
+	unsigned char ucVendorStr[20];
 
-    // Connect to Network
-    lRetVal = ConnectToNetwork();
-    if(lRetVal < 0)
-    {
-        ERR_PRINT(lRetVal);
-        LOOP_FOREVER();
-    }
+	//TODO
 
-    // Handle Async Events
-    while(1)
-    {
-        // LED Actions
-        if(g_ucLEDStatus == LED_ON)
-        {
-            GPIO_IF_LedOn(MCU_STAT_1_LED_GPIO);
-            osi_Sleep(500);
-        }
-        if(g_ucLEDStatus == LED_OFF)
-        {
-            GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
-            osi_Sleep(500);
-        }
-        if(g_ucLEDStatus==LED_BLINK)
-        {
-            GPIO_IF_LedOn(MCU_STAT_1_LED_GPIO);
-            osi_Sleep(500);
-            GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
-            osi_Sleep(500);
-        }
-    }
+	//
+	// Configure LED
+	//
+
+	ConnectToNetwork();
+
+	//
+	// Initialize OTA
+	//
+	pvOtaApp = sl_extLib_OtaInit(RUN_MODE_NONE_OS | RUN_MODE_BLOCKING,0);
+
+	strcpy((char *)ucVendorStr, OTA_VENDOR_STRING);
+
+	OTAServerInfoSet(&pvOtaApp, (char *)ucVendorStr);
+
+
+	//
+	// Check if this image is booted in test mode
+	//
+
+
+	sl_extLib_OtaGet(pvOtaApp, EXTLIB_OTA_GET_OPT_IS_PENDING_COMMIT, &OptionLen, (_u8 *)&OptionVal);
+
+
+	UART_PRINT("EXTLIB_OTA_GET_OPT_IS_PENDING_COMMIT? %d \n\r", OptionVal);
+
+
+	if (OptionVal == true)  {
+	    UART_PRINT("OTA: PENDING COMMIT & WLAN OK ==> PERFORM COMMIT \n\r");
+
+
+	    SetCommitInt = OTA_ACTION_IMAGE_COMMITED;
+	    sl_extLib_OtaSet(pvOtaApp, EXTLIB_OTA_SET_OPT_IMAGE_COMMIT, sizeof(int), (_u8 *)&SetCommitInt);
+	}
+	else    {
+	    UART_PRINT("Starting OTA\n\r");
+	    lRetVal = 0;
+
+
+	    while (!lRetVal)    {
+	        lRetVal = sl_extLib_OtaRun(pvOtaApp);
+	    }
+
+
+	    UART_PRINT("OTA run = %d\n\r", lRetVal);
+	    if (lRetVal < 0) {
+	        UART_PRINT("OTA: Error with OTA server\n\r");
+	    }
+	    else if (lRetVal == RUN_STAT_NO_UPDATES)    {
+	        UART_PRINT("OTA: RUN_STAT_NO_UPDATES\n\r");
+	    }
+	    else if (lRetVal && RUN_STAT_DOWNLOAD_DONE) {
+	        // Set OTA File for testing
+
+
+	        lRetVal = sl_extLib_OtaSet(pvOtaApp, EXTLIB_OTA_SET_OPT_IMAGE_TEST, sizeof(int), (_u8 *)&SetCommitInt);
+
+
+	        UART_PRINT("OTA: NEW IMAGE DOWNLOAD COMPLETE\n\r");
+
+
+	        UART_PRINT("Rebooting...\n\r");
+	        RebootMCU();
+	    }
+
+
+	}
+
 }
 
 //****************************************************************************
@@ -912,9 +947,10 @@ static void OOBTask(void *pvParameters)
 //****************************************************************************
 static void DataGatherTask(void *pvParameters)
 {
+	long   lRetVal = -1;
 
 	TickType_t xLastWakeTime;
-	const TickType_t xFreq = 30000; // 60 seconds
+	const TickType_t xFreq = 10000; // 60 seconds
 
 	xLastWakeTime = xTaskGetTickCount();
 
@@ -947,43 +983,17 @@ static void DataGatherTask(void *pvParameters)
 		I2C_IF_Close(I2C_MASTER_MODE_FST);
 		GetPMS3003Result(pm_buf);
 
-
-
-
-
-
 		// Gather uart sensor data
 		//TODO GPS
-		//TODO PMS
+
 		pm01 = GetPM01(pm_buf);
 		pm2_5 =GetPM2_5(pm_buf);
 		pm10 = GetPM10(pm_buf);
 
 
-		// Write data to uSD card
-		//old way:
-
-		//char n[100];
-		//int btw;
-		//btw = snprintf(n,100, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
-//		int btw = (sizeof(i)+
-//				   sizeof(temperature)+
-//				   sizeof(humidity)+
-//				   sizeof(light)+
-//				   sizeof(pm01)+
-//				   sizeof(pm2_5)+
-//				   sizeof(pm10)+
-//				   10*sizeof(char));
-
 		char *csv = (char*)malloc(50* sizeof(char));
-//		char *csv = 0;
-		//char csv [btw];
-		//btw = snprintf(buf, 100, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
 		sprintf(csv, "%d,%f,%f,%f,%d,%d,%d\r\n", i++, temperature, humidity, light, pm01, pm2_5, pm10);
 		int btw = strlen(csv);
-		//char csv[4];
-		//sprintf(csv,"%u\n\r",pm10);
-
 
 		//TODO create file for each new day using GPS
 		// this will propose a problem though if date doesnt get set
@@ -993,7 +1003,6 @@ static void DataGatherTask(void *pvParameters)
 		if (res == FR_OK) {
 			/* Append a line */
 			res = f_write(&fp,csv,btw,&Size);
-			//Report("Wrote : %d Bytes",Size);
 			/* Close the file */
 			res = f_close(&fp);
 
@@ -1002,6 +1011,7 @@ static void DataGatherTask(void *pvParameters)
 		{
 			//Message("Failed to create a new file\n\r");
 		}
+		free(csv);
 
 	}
 }
@@ -1031,60 +1041,8 @@ static void DataGatherTask(void *pvParameters)
 //	}
 //}
 
-//*****************************************************************************
-//
-//! Application startup display on UART
-//!
-//! \param  none
-//!
-//! \return none
-//!
-//*****************************************************************************
-static void DisplayBanner(char * AppName)
-{
-    UART_PRINT("\n\n\n\r");
-    UART_PRINT("\t\t *************************************************\n\r");
-    UART_PRINT("\t\t     CC3200 %s Application       \n\r", AppName);
-    UART_PRINT("\t\t *************************************************\n\r");
-    UART_PRINT("\n\n\n\r");
-}
 
-//****************************************************************************
-//
-//! List the files in the given directory
-//!
-//! \param pointer to directory
-//!
-//! \return None.
-//
-//****************************************************************************
-static void
-ListDirectory(DIR *dir)
-{
-    FILINFO fno;
-    FRESULT res;
-    unsigned long ulSize;
-    tBoolean bIsInKB;
 
-    for(;;)
-    {
-        res = f_readdir(dir, &fno);           // Read a directory item
-        if (res != FR_OK || fno.fname[0] == 0)
-        {
-        break;                                // Break on error or end of dir
-        }
-        ulSize = fno.fsize;
-        bIsInKB = false;
-        if(ulSize > 1024)
-        {
-            ulSize = ulSize/1024;
-            bIsInKB = true;
-        }
-        Report("->%-15s%5d %-2s    %-5s\n\r",fno.fname,ulSize,\
-                (bIsInKB == true)?"KB":"B",(fno.fattrib&AM_DIR)?"Dir":"File");
-    }
-
-}
 
 //*****************************************************************************
 //
@@ -1152,8 +1110,100 @@ static void SDInit(){
 
 }
 
+//****************************************************************************
+//
+//! Sets the OTA server info and vendor ID
+//!
+//! \param pvOtaApp pointer to OtaApp handler
+//! \param ucVendorStr vendor string
+//! \param pfnOTACallBack is  pointer to callback function
+//!
+//! This function sets the OTA server info and vendor ID.
+//!
+//! \return None.
+//
+//****************************************************************************
+int OTAServerInfoSet(void **pvOtaApp, char *vendorStr)
+{
+
+    unsigned char macAddressLen = SL_MAC_ADDR_LEN;
+
+    //
+    // Set OTA server info
+    //
+    g_otaOptServerInfo.ip_address = OTA_SERVER_IP_ADDRESS;
+    g_otaOptServerInfo.secured_connection = OTA_SERVER_SECURED;
+    strcpy((char *)g_otaOptServerInfo.server_domain, OTA_SERVER_NAME);
+    strcpy((char *)g_otaOptServerInfo.rest_update_chk, OTA_SERVER_REST_UPDATE_CHK);
+    strcpy((char *)g_otaOptServerInfo.rest_rsrc_metadata, OTA_SERVER_REST_RSRC_METADATA);
+    strcpy((char *)g_otaOptServerInfo.rest_hdr, OTA_SERVER_REST_HDR);
+    strcpy((char *)g_otaOptServerInfo.rest_hdr_val, OTA_SERVER_REST_HDR_VAL);
+    strcpy((char *)g_otaOptServerInfo.log_server_name, LOG_SERVER_NAME);
+    strcpy((char *)g_otaOptServerInfo.rest_files_put, OTA_SERVER_REST_FILES_PUT);
+    sl_NetCfgGet(SL_MAC_ADDRESS_GET, NULL, &macAddressLen, (_u8 *)g_otaOptServerInfo.log_mac_address);
+
+    //
+    // Set OTA server Info
+    //
+    sl_extLib_OtaSet(*pvOtaApp, EXTLIB_OTA_SET_OPT_SERVER_INFO,
+                     sizeof(g_otaOptServerInfo), (_u8 *)&g_otaOptServerInfo);
+
+    //
+    // Set vendor ID.
+    //
+    sl_extLib_OtaSet(*pvOtaApp, EXTLIB_OTA_SET_OPT_VENDOR_ID, strlen(vendorStr),
+                     (_u8 *)vendorStr);
+
+    //
+    // Return ok status
+    //
+    return RUN_STAT_OK;
+}
+
+//****************************************************************************
+//
+//! Reboot the MCU by requesting hibernate for a short duration
+//!
+//! \return None
+//
+//****************************************************************************
+static void RebootMCU()
+{
+
+  //
+  // Configure hibernate RTC wakeup
+  //
+  PRCMHibernateWakeupSourceEnable(PRCM_HIB_SLOW_CLK_CTR);
+
+  //
+  // Delay loop
+  //
+  MAP_UtilsDelay(8000000);
+
+  //
+  // Set wake up time
+  //
+  PRCMHibernateIntervalSet(330);
+
+  //
+  // Request hibernate
+  //
+  PRCMHibernateEnter();
+
+  //
+  // Control should never reach here
+  //
+  while(1)
+  {
+
+  }
+}
+
 void main()
 {
+
+	long   lRetVal = -1;
+
     // Board Initialization
     BoardInit();
     
@@ -1165,7 +1215,6 @@ void main()
     // Initialize Global Variables
     InitializeAppVariables();
     
-    // UART Init
 
     //InitTerm();
     InitPMS();
@@ -1174,7 +1223,8 @@ void main()
     SDInit();
 
 
-    //DisplayBanner(APP_NAME);
+    //DisplayBanner(OTA_VENDOR_STRING);
+
 
     // LED Init
     GPIO_IF_LedConfigure(STATLED1);
@@ -1185,12 +1235,17 @@ void main()
     GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 
     // Simplelink Spawn Task
-    VStartSimpleLinkSpawnTask(SPAWN_TASK_PRIORITY);
+    lRetVal = VStartSimpleLinkSpawnTask(SPAWN_TASK_PRIORITY);
+    if(lRetVal < 0)
+    {
+    	ERR_PRINT(lRetVal);
+        LOOP_FOREVER();
+    }
     
-    // Create OOB Task
-//    osi_TaskCreate(OOBTask, (signed char*)"OOBTask", \
+    // Create OTA Task
+//    osi_TaskCreate(OTATask, (signed char*)"OTATask", \
 //                                OSI_STACK_SIZE, NULL, \
-//                                OOB_TASK_PRIORITY, NULL );
+//                                OTA_TASK_PRIORITY, NULL );
 
     // Create the DataGather Task
     osi_TaskCreate(DataGatherTask, (signed char*)"DataGatherTask",

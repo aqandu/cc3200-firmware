@@ -59,7 +59,7 @@ void
 GetPMS3003Result(unsigned char *buf)
 {
 
-    int i;
+   int i;
 
     // Wait for start of new transmission
    while (UartGetChar() != 'B');
