@@ -53,16 +53,16 @@ extern "C"
 typedef enum
 {
     NO_LED,
-    STATLED1 = 0x1, /* STAT 1 LED D7/GP9/Pin64 */
-    STATLED2 = 0x2, /* STAT 2 LED D6/GP10/Pin1 */
-    STATLED3 = 0x4  /* STAT 3 LED D5/GP11/Pin2 */
+    LED1 = 0x1, /* STAT 1 LED D7/GP9/Pin64 */
+    LED2 = 0x2, /* STAT 2 LED D6/GP10/Pin1 */
+    LED3 = 0x4  /* STAT 3 LED D5/GP11/Pin2 */
 
 } ledEnum;
 
 typedef enum
 {
     NO_LED_IND = NO_LED,
-    MCU_SENDING_DATA_IND = STATLED1,
+    MCU_SENDING_DATA_IND = LED1,
     MCU_ASSOCIATED_IND, /* Device associated to an AP */
     MCU_IP_ALLOC_IND, /* Device acquiSTAT 1 an IP */
     MCU_SERVER_INIT_IND, /* Device connected to remote server */

@@ -59,9 +59,9 @@ FRESULT res;
 DIR dir;
 UINT Size;
 
-#define OTA_TASK_PRIORITY                1
-#define DATAGATHER_TASK_PRIORITY		 3
-#define DATAUPLOAD_TASK_PRIORITY         2
+#define OTA_TASK_PRIORITY                3
+#define DATAGATHER_TASK_PRIORITY		 2
+#define DATAUPLOAD_TASK_PRIORITY         1
 #define SPAWN_TASK_PRIORITY              9
 
 #define OSI_STACK_SIZE                  2048
@@ -467,7 +467,7 @@ void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pSlHttpServerEvent,
             unsigned char led;
             unsigned char *ptr = pSlHttpServerEvent->EventData.httpPostData.token_name.data;
 
-            //g_ucLEDStatus = 0;
+            g_ucLEDStatus = 0;
             if(memcmp(ptr, POST_token, strlen((const char *)POST_token)) == 0)
             {
                 ptr = pSlHttpServerEvent->EventData.httpPostData.token_value.data;
@@ -492,7 +492,7 @@ void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pSlHttpServerEvent,
                     else
                     {
                         GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
-                                                g_ucLEDStatus = LED_OFF;
+                        g_ucLEDStatus = LED_OFF;
                     }
                 }
                 else if(led == '2')
@@ -676,6 +676,17 @@ long ConnectToNetwork()
     lRetVal =  sl_Start(NULL,NULL,NULL);
     ASSERT_ON_ERROR( lRetVal);
 
+    unsigned char ssid[15] = "airu-1";
+    unsigned short ssid_len = strlen((const char *) ssid);
+    sl_WlanSet(SL_WLAN_CFG_AP_ID,WLAN_AP_OPT_SSID, ssid_len, ssid);
+
+    unsigned char url[32] = "myairu.edu";
+    unsigned char url_len = strlen((const char *) url);
+    lRetVal = sl_NetAppSet(SL_NET_APP_DEVICE_CONFIG_ID, NETAPP_SET_GET_DEV_CONF_OPT_DOMAIN_NAME, url_len, (const char *)url);
+
+
+
+
     if ( g_uiDeviceModeConfig == ROLE_AP )
     {
     	UART_PRINT("Force AP Jumper is Connected.\n\r");
@@ -838,11 +849,13 @@ static void ReadDeviceConfiguration()
     {
         // AP Mode
         g_uiDeviceModeConfig = ROLE_AP;
+
     }
     else
     {
         // STA Mode
         g_uiDeviceModeConfig = ROLE_STA;
+
     }
 
 }
@@ -867,11 +880,17 @@ static void OTATask(void *pvParameters)
 
 	//TODO
 
-	//
-	// Configure LED
-	//
+	//Read Device Mode Configuration
 
-	ConnectToNetwork();
+	ReadDeviceConfiguration();
+
+
+	lRetVal = ConnectToNetwork();
+	if (lRetVal < 0){
+		GPIO_IF_LedOn(MCU_STAT_3_LED_GPIO);
+		osi_Sleep(500);
+		GPIO_IF_LedOff(MCU_STAT_3_LED_GPIO);
+	}
 
 	//
 	// Initialize OTA
@@ -1216,23 +1235,26 @@ void main()
     InitializeAppVariables();
     
 
-    //InitTerm();
-    InitPMS();
+    InitTerm();
+    //InitPMS();
 
     // uSD Init
     SDInit();
 
 
-    //DisplayBanner(OTA_VENDOR_STRING);
+    DisplayBanner(OTA_VENDOR_STRING);
 
 
     // LED Init
-    GPIO_IF_LedConfigure(STATLED1);
-    GPIO_IF_LedConfigure(STATLED2);
+    GPIO_IF_LedConfigure(LED1);
+    GPIO_IF_LedConfigure(LED2);
+    GPIO_IF_LedConfigure(LED3);
       
     // Turn Off the LEDs
     GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
-    GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
+    GPIO_IF_LedOff(MCU_STAT_2_LED_GPIO);
+    GPIO_IF_LedOff(MCU_STAT_3_LED_GPIO);
+    //GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 
     // Simplelink Spawn Task
     lRetVal = VStartSimpleLinkSpawnTask(SPAWN_TASK_PRIORITY);
@@ -1243,13 +1265,13 @@ void main()
     }
     
     // Create OTA Task
-//    osi_TaskCreate(OTATask, (signed char*)"OTATask", \
-//                                OSI_STACK_SIZE, NULL, \
-//                                OTA_TASK_PRIORITY, NULL );
+    osi_TaskCreate(OTATask, (signed char*)"OTATask", \
+                                OSI_STACK_SIZE, NULL, \
+                                OTA_TASK_PRIORITY, NULL );
 
     // Create the DataGather Task
-    osi_TaskCreate(DataGatherTask, (signed char*)"DataGatherTask",
-    		OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
+//    osi_TaskCreate(DataGatherTask, (signed char*)"DataGatherTask",
+//    		OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
 
 //    // Create the DataUpload Task
 //    osi_TaskCreate(DataUploadTask, (signed char*)"DataUploadTask",

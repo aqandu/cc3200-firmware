@@ -122,21 +122,21 @@ void
 GPIO_IF_LedConfigure(unsigned char ucPins)
 {
 
-  if(ucPins & STATLED1)
+  if(ucPins & LED1)
   {
     GPIO_IF_GetPortNPin(GPIO_LED1,
                         &g_uiLED1Port,
                         &g_ucLED1Pin);
   }
 
-  if(ucPins & STATLED2)
+  if(ucPins & LED2)
   {
     GPIO_IF_GetPortNPin(GPIO_LED2,
                   &g_uiLED2Port,
           &g_ucLED2Pin);
   }
 
-  if(ucPins & STATLED3)
+  if(ucPins & LED3)
   {
     GPIO_IF_GetPortNPin(GPIO_LED3,
                       &g_uiLED3Port,
