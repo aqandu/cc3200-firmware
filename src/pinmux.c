@@ -105,7 +105,8 @@ void PinMuxConfig(void)
     //
     // Configure PIN_03 for UART0 UART0_TX
     //
-    PinTypeUART(PIN_03, PIN_MODE_7);
+    PinTypeUART(PIN_03, PIN_MODE_7); //comment out for terminal
+   // PinTypeUART(PIN_55, PIN_MODE_3); //uncomment for terminal
     //
     // Configure PIN_04 for UART0 UART0_RX
     //
@@ -113,7 +114,7 @@ void PinMuxConfig(void)
     //
     // Configure PIN_55 for UART1 UART1_TX
     //
-    PinTypeUART(PIN_55, PIN_MODE_6);
+    PinTypeUART(PIN_55, PIN_MODE_6); //comment out for terminal
     //
     // Configure PIN_57 for UART1 UART1_RX
     //
