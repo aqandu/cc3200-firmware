@@ -6,12 +6,12 @@
  //*****************************************************************************
  // Device Defines
  //*****************************************************************************
-#define DEVICE_VERSION			"1.0.0"
-#define DEVICE_MANUFACTURE		"SWIFT_SOFTWARE"
-#define DEVICE_NAME 			"STARTPROJECT"
+#define DEVICE_VERSION			"1.1.0"
+#define DEVICE_MANUFACTURE		"UOFU"
+#define DEVICE_NAME 			"dairu"
 #define DEVICE_MODEL			"CC3200"
-#define DEVICE_AP_DOMAIN_NAME	"myairu.edu"
-#define DEVICE_SSID_AP_NAME		"airu-2"
+#define DEVICE_AP_DOMAIN_NAME	"myairu.local"
+#define DEVICE_SSID_AP_NAME		"sairu"
 
  //*****************************************************************************
  // mDNS Defines

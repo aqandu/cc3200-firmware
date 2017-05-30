@@ -58,7 +58,7 @@ FRESULT res;
 DIR dir;
 UINT Size;
 
-#define OTA_TASK_PRIORITY                3
+#define NETWORK_CONFIG_TASK_PRIORITY     3
 #define DATAGATHER_TASK_PRIORITY		 2
 #define DATAUPLOAD_TASK_PRIORITY         1
 #define SPAWN_TASK_PRIORITY              9
@@ -88,7 +88,6 @@ static unsigned char GET_token_TEMP[] = "__SL_G_UTP";
 static unsigned char GET_token_ACC[] = "__SL_G_UAC";
 static unsigned char GET_token_UIC[] = "__SL_G_UIC";
 static int g_iInternetAccess = -1;
-static unsigned char g_ucDryerRunning = 0;
 static unsigned int g_uiDeviceModeConfig = ROLE_STA; //default is STA mode
 static unsigned char g_ucLEDStatus = LED_OFF;
 static unsigned long g_ulStatus = 0; //SimpleLink Status
@@ -393,19 +392,19 @@ void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pSlHttpServerEvent,
 				GET_token_ACC, strlen((const char *) GET_token_ACC)) == 0) {
 
 			// read sensor
-			if (g_ucDryerRunning) {
-				strcpy(
-						(char*) pSlHttpServerResponse->ResponseData.token_value.data,
-						"Running");
-				pSlHttpServerResponse->ResponseData.token_value.len += strlen(
-						"Running");
-			} else {
-				strcpy(
-						(char*) pSlHttpServerResponse->ResponseData.token_value.data,
-						"Stopped");
-				pSlHttpServerResponse->ResponseData.token_value.len += strlen(
-						"Stopped");
-			}
+//			if (g_ucDryerRunning) {
+//				strcpy(
+//						(char*) pSlHttpServerResponse->ResponseData.token_value.data,
+//						"Running");
+//				pSlHttpServerResponse->ResponseData.token_value.len += strlen(
+//						"Running");
+//			} else {
+//				strcpy(
+//						(char*) pSlHttpServerResponse->ResponseData.token_value.data,
+//						"Stopped");
+//				pSlHttpServerResponse->ResponseData.token_value.len += strlen(
+//						"Stopped");
+//			}
 		}
 
 	}
@@ -591,6 +590,7 @@ static int ConfigureMode(int iMode) {
 //
 //****************************************************************************
 long ConnectToNetwork() {
+
 	long lRetVal = -1;
 	unsigned int uiConnectTimeoutCnt = 0;
 
@@ -598,15 +598,30 @@ long ConnectToNetwork() {
 	lRetVal = sl_Start(NULL, NULL, NULL);
 	ASSERT_ON_ERROR(lRetVal);
 
-	unsigned char ssid[15] = "airu-3";
-	unsigned short ssid_len = strlen((const char *) ssid);
-	sl_WlanSet(SL_WLAN_CFG_AP_ID, WLAN_AP_OPT_SSID, ssid_len, ssid);
+//	lRetVal = setDeviceName();
+//	ASSERT_ON_ERROR(lRetVal);
 
-	unsigned char url[32] = "myairu.edu";
-	unsigned char url_len = strlen((const char *) url);
-	lRetVal = sl_NetAppSet(SL_NET_APP_DEVICE_CONFIG_ID,
-			NETAPP_SET_GET_DEV_CONF_OPT_DOMAIN_NAME, url_len,
-			(const unsigned char *) url);
+//	lRetVal = setApDomainName();
+//	ASSERT_ON_ERROR(lRetVal);
+
+//	char str[33] = getDeviceName()+ "-" + getMacAddress();
+//	lRetVal = setSsidName("airu-123");
+//	ASSERT_ON_ERROR(lRetVal);
+
+//	unsigned char ssid[15] = "airu-321";
+//	unsigned short ssid_len = strlen((const char *) ssid);
+//	sl_WlanSet(SL_WLAN_CFG_AP_ID, WLAN_AP_OPT_SSID, ssid_len, ssid);
+
+//	unsigned char url[32] = "myairu.edu";
+//	unsigned char url_len = strlen((const char *) url);
+//	lRetVal = sl_NetAppSet(SL_NET_APP_DEVICE_CONFIG_ID,
+//			NETAPP_SET_GET_DEV_CONF_OPT_DOMAIN_NAME, url_len,
+//			(const unsigned char *) url);
+
+//	int e;
+//	e = setSsidName();
+//	UART_PRINT("%d error setting ssid name\r\n", e);
+//	UART_PRINT();
 
 	if (g_uiDeviceModeConfig == ROLE_AP) {
 		UART_PRINT("Force AP Jumper is Connected.\n\r");
@@ -633,10 +648,12 @@ long ConnectToNetwork() {
 		lRetVal = sl_NetAppStart(SL_NET_APP_HTTP_SERVER_ID);
 		ASSERT_ON_ERROR(lRetVal);
 
+
 		char ssid[32];
-		unsigned short len = 32;
-		unsigned short config_opt = WLAN_AP_OPT_SSID;
-		sl_WlanGet(SL_WLAN_CFG_AP_ID, &config_opt, &len, (unsigned char*) ssid);
+		strcpy(ssid, getSsidName());
+//		unsigned short len = 32;
+//		unsigned short config_opt = WLAN_AP_OPT_SSID;
+//		sl_WlanGet(SL_WLAN_CFG_AP_ID, &config_opt, &len, (unsigned char*) ssid);
 		UART_PRINT("\n\r Connect to : \'%s\'\n\r\n\r", ssid);
 	} else {
 		if (lRetVal == ROLE_AP) {
@@ -651,6 +668,10 @@ long ConnectToNetwork() {
 #endif
 			}
 		}
+
+//		Report("Registering mDNS. \r\n");
+//		lRetVal = registerMdnsService();
+//		ASSERT_ON_ERROR(lRetVal);
 
 		// Switch to STA Mode
 		lRetVal = ConfigureMode(ROLE_STA);
@@ -722,10 +743,11 @@ long ConnectToNetwork() {
 			}
 
 			char ssid[32];
-			unsigned short len = 32;
-			unsigned short config_opt = WLAN_AP_OPT_SSID;
-			sl_WlanGet(SL_WLAN_CFG_AP_ID, &config_opt, &len,
-					(unsigned char*) ssid);
+			strcpy(ssid, getSsidName());
+//			unsigned short len = 32;
+//			unsigned short config_opt = WLAN_AP_OPT_SSID;
+//			sl_WlanGet(SL_WLAN_CFG_AP_ID, &config_opt, &len,
+//					(unsigned char*) ssid);
 			UART_PRINT("\n\r Connect to : \'%s\'\n\r\n\r", ssid);
 		}
 
@@ -778,7 +800,7 @@ static void ReadDeviceConfiguration() {
 //! \return                        None
 //
 //****************************************************************************
-static void HTTPTask(void *pvParameters) {
+static void NetworkConfigTask(void *pvParameters) {
 	long lRetVal = -1;
 
 	ReadDeviceConfiguration();
@@ -789,8 +811,6 @@ static void HTTPTask(void *pvParameters) {
 		osi_Sleep(500);
 		GPIO_IF_LedOff(MCU_STAT_3_LED_GPIO);
 	}
-
-
 
 }
 
@@ -806,7 +826,7 @@ static void DataGatherTask(void *pvParameters) {
 	long lRetVal = -1;
 
 	TickType_t xLastWakeTime;
-	const TickType_t xFreq = 10000; // 60 seconds
+	const TickType_t xFreq = 5000; // 60 seconds
 
 	xLastWakeTime = xTaskGetTickCount();
 
@@ -826,14 +846,25 @@ static void DataGatherTask(void *pvParameters) {
 
 		// Gather i2c sensor data
 		I2C_IF_Open(I2C_MASTER_MODE_FST);
-		temperature = GetTemperature();
-		humidity = GetHumidity();
 		ConfigureOPT3001Mode();
 		light = GetOPT3001Result();
-
-		//TODO CO/NO2
 		I2C_IF_Close(I2C_MASTER_MODE_FST);
-		GetPMS3003Result(pm_buf);
+
+		I2C_IF_Open(I2C_MASTER_MODE_FST);
+		ConfigureHDC1080Mode();
+		temperature = GetTemperature();
+		humidity = GetHumidity();
+		I2C_IF_Close(I2C_MASTER_MODE_FST);
+
+		if (light > 0) {
+			GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
+		} else {
+			GPIO_IF_LedOn(MCU_STAT_3_LED_GPIO);
+		}
+
+		UART_PRINT("l: %f, t: %f, h: %h\r\n", light, temperature, humidity);
+
+		//GetPMS3003Result(pm_buf);
 
 		// Gather uart sensor data
 		//TODO GPS
@@ -874,22 +905,22 @@ static void DataGatherTask(void *pvParameters) {
 //! \return                        None
 //
 //****************************************************************************
-//static void DataUploadTask(void *pvParameters)
-//{
-//	TickType_t xLastWakeTime;
-//	const TickType_t xFreq = 60000; // 1 minute
-//
-//	xLastWakeTime = xTaskGetTickCount();
-//
-//	int i = 0;
-//	while (1)
-//	{
-//		vTaskDelayUntil(&xLastWakeTime, xFreq);
-//
-//		// Write over UART
-//		UART_PRINT("%d\r\n", i++);
-//	}
-//}
+static void DataUploadTask(void *pvParameters)
+{
+	TickType_t xLastWakeTime;
+	const TickType_t xFreq = 1000; // 1 minute
+
+	xLastWakeTime = xTaskGetTickCount();
+
+	int i = 0;
+	while (1)
+	{
+		vTaskDelayUntil(&xLastWakeTime, xFreq);
+
+		// Write over UART
+		UART_PRINT("Upload Task %d\r\n", i++);
+	}
+}
 
 //*****************************************************************************
 //
@@ -956,7 +987,6 @@ static void SDInit() {
 
 }
 
-
 //****************************************************************************
 //
 //! Reboot the MCU by requesting hibernate for a short duration
@@ -1009,12 +1039,14 @@ void main() {
 	// Initialize Global Variables
 	InitializeAppVariables();
 
-	//InitTerm();
-	InitPMS();
+	// Can't have both the Term and PMS
+	InitTerm();
+	//InitPMS();
 
 	// uSD Init
 	SDInit();
 
+	DisplayBanner("airu");
 
 	// LED Init
 	GPIO_IF_LedConfigure(LED1);
@@ -1035,18 +1067,18 @@ void main() {
 		;
 	}
 
-	// Create OTA Task
-	osi_TaskCreate(HTTPTask, (signed char*) "OTATask",
-	OSI_STACK_SIZE, NULL,
-	OTA_TASK_PRIORITY, NULL);
+	Report("Entering Network Config Task\r\n");
+	osi_TaskCreate(NetworkConfigTask, (signed char*) "NetworkConfigTask",
+4096, NULL,
+	NETWORK_CONFIG_TASK_PRIORITY, NULL);
 
 	// Create the DataGather Task
-//    osi_TaskCreate(DataGatherTask, (signed char*)"DataGatherTask",
-//    		OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
+    osi_TaskCreate(DataGatherTask, (signed char*)"DataGatherTask",
+    		OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
 
-//    // Create the DataUpload Task
-//    osi_TaskCreate(DataUploadTask, (signed char*)"DataUploadTask",
-//        						 OSI_STACK_SIZE, NULL, DATAUPLOAD_TASK_PRIORITY, NULL);
+	// Create the DataUpload Task
+    osi_TaskCreate(DataUploadTask, (signed char*)"DataUploadTask",
+        						 OSI_STACK_SIZE, NULL, DATAUPLOAD_TASK_PRIORITY, NULL);
 
 	// Start OS Scheduler
 	osi_start();

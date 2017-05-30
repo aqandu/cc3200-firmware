@@ -39,6 +39,7 @@ char * getMacAddress()
 	return macAddressFull;
 }
 
+
 //*****************************************************************************
 //! getDeviceName
 //!
@@ -146,7 +147,7 @@ int setApDomainName()
 int setSsidName()
 {
 	int iretVal;
-	unsigned char  str[33] = "StartProjectAP";
+	unsigned char  str[33] = "airu-test";
 	unsigned short  length = strlen((const char *)str);
 	iretVal = sl_WlanSet(SL_WLAN_CFG_AP_ID, WLAN_AP_OPT_SSID, length, str);
 	return iretVal;
