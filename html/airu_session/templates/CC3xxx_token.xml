@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CC3xxx>
+   <XML_VER>1</XML_VER>
+   <Version>
+      <Platform>CC31xx Simple Link device</Platform>
+      <SoftwareMajor>1</SoftwareMajor>
+      <SoftwareMinor>0</SoftwareMinor>
+      <Software_sub_Minor>0</Software_sub_Minor>
+   </Version>
+   <Filename name="/sys/mcuimg.bin">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/cert/ca.pem">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/cert/client.pem">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/cert/private.key">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/macadd.bin">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/mode.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/ipcfg.ini">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/ap.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/devname.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/mdns.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/dhcpsrv.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/httpsrv.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/pref.net">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/smartconfigkeys.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/stacfg.ini">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/p2p.cfg">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="/sys/pmcfg.ini">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="www/index.html">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/3a3fc51a-db1b-4492-9849-4a4d87ec8e40">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/2a5e62c1-34b9-43e6-a8f2-7779e1c67cde">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/7f20c225-44c5-4f5e-b4d8-59f2f07a9da0">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/d2abca3a-9b8b-4512-887c-ba58c6a367e0">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/a9e9d4d0-597a-43f9-a827-3a371ad21ba9">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/f5805475-54be-4f84-83d9-e200513ae308">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/91e6e05c-a33f-4f62-a086-db0611445fd0">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/a3f6f24f-8882-4ba0-ab10-b5d7d871ec08">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/bda84ed9-c3dd-43ec-8e7d-a6ebc8ff2884">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/4571701e-97ef-499d-b263-d70e1e43e84e">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/70fe4bd0-bf75-485f-8ca3-3af552351f24">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/8b373d34-c4d8-423c-a9f5-ea4a44727d36">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/30e4d920-e744-4556-8aa9-1c9afb0d9b83">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/b9d4b927-3bbf-4137-9f0f-c3ebad95237b">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/c2c63703-14e5-4307-a8e6-93350e9753a7">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/35df1aa6-1094-4722-ac46-0fa5abab47e9">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/30256b60-55e3-49c0-9f67-b662b39464c2">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+   <Filename name="new file/e4db2af9-e56e-483a-9731-d4d1bf3fd3c5">
+      <MAX>0x0</MAX>
+      <RW>0x0</RW>
+      <RO>0x0</RO>
+   </Filename>
+</CC3xxx>
