@@ -51,6 +51,10 @@
 #define ERROR_PMS_BAD_HEADER    1UL
 #define ERROR_PMS_BAD_CS        2UL
 
+// GPIO stuff
+#define MCU_STAT_1_LED_GPIO 9
+#define MCU_STAT_2_LED_GPIO 10
+#define MCU_STAT_3_LED_GPIO 11
 
 //*****************************************************************************
 //

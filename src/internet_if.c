@@ -728,8 +728,6 @@ long Wlan_Connect() {
     lRetVal = sl_Start(NULL, NULL, NULL);
     ASSERT_ON_ERROR(lRetVal);
 
-    InitializeAppVariables();
-
     lRetVal = setSsidName(g_ucUniqueID);
     ASSERT_ON_ERROR(lRetVal);
 
@@ -805,6 +803,7 @@ long Wlan_Connect() {
 
         while (uiConnectTimeoutCnt < AUTO_CONNECTION_TIMEOUT_COUNT
                 && ((!IS_CONNECTED(g_ulStatus)) || (!IS_IP_ACQUIRED(g_ulStatus)))) {
+            UART_PRINT("-");
             osi_Sleep(100);
             uiConnectTimeoutCnt++;
         }
@@ -824,6 +823,7 @@ long Wlan_Connect() {
             // If the device is in AP mode, we need to wait for this event
             // before doing anything
             while (!IS_IP_ACQUIRED(g_ulStatus)) {
+                UART_PRINT("Waiting on IP\n\r");
 #ifndef SL_PLATFORM_MULTI_THREADED
                 _SlNonOsMainLoopTask();
 #endif
@@ -838,7 +838,7 @@ long Wlan_Connect() {
             UART_PRINT("\n\r Connect to : \'%s\'\n\r\n\r", ssid);
         }
 
-        g_iInternetAccess =0;// ConnectionTest();
+        g_iInternetAccess = ConnectionTest();
 
     }
 
@@ -1857,6 +1857,7 @@ long GetSNTPTime()
         ASSERT_ON_ERROR(SERVER_GET_TIME_FAILED);
     }
 
+    DBG_PRINT("Sent SNTP Request\n\r");
     //
     // Wait to receive the NTP time from the server
     //
@@ -1878,6 +1879,7 @@ long GetSNTPTime()
                        (SlSocklen_t*)&iAddrSize);
     ASSERT_ON_ERROR(lRetVal);
 
+    DBG_PRINT("ACK from server\n\r");
     //
     // Confirm that the MODE is 4 --> server
     //
@@ -2004,7 +2006,7 @@ long GetSNTPTime()
        // UART_PRINT((char *)g_acSNTPserver);
        // UART_PRINT("\n\r");
        // UART_PRINT("\n\r");
-       // UART_PRINT(g_sSNTPData.acTimeStore);
+        UART_PRINT(g_sSNTPData.acTimeStore);
 //        char cTimestamp[20];
 //        //char* tsptr = &cTimestamp[0];
 //        NTP_GetDateTime(&cTimestamp[0]);

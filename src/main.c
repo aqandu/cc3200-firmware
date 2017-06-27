@@ -71,6 +71,11 @@
 
 #define SD_CYCLES_PER_WRITE             5       /* data gather cycles per write to SD card */
 
+// GPIO stuff
+#define MCU_STAT_1_LED_GPIO 9
+#define MCU_STAT_2_LED_GPIO 10
+#define MCU_STAT_3_LED_GPIO 11
+
 
 //*****************************************************************************
 //                      LOCAL FUNCTION PROTOTYPES
@@ -102,7 +107,7 @@ static eLEDStatus g_ucLEDStatus;
 static OtaOptServerInfo_t g_otaOptServerInfo;
 static void *pvOtaApp;
 
-// Global flags
+// Global flags //
 #if defined(ccs)
 extern void (* const g_pfnVectors[])(void);
 #endif
@@ -211,14 +216,16 @@ void LedTimerDeinitStop()
 //****************************************************************************
 void vGetNTPTimeTask(void *pvParameters)
 {
-    int iSocketDesc;
+    int iSocketDesc = 0;
     long lRetVal = -1;
 
     while(1){
         if(SUCCESS==Wlan_IsInternetAccess()){
+            SKT_CloseSocket(iSocketDesc); // close the old one just in case
             iSocketDesc = SKT_OpenUDPSocket();
             lRetVal = GetSNTPTime();
             SKT_CloseSocket(iSocketDesc);
+
         }
         osi_Sleep(5000);
     }
@@ -640,15 +647,17 @@ void main() {
 
     InitPMS();
 
+    InitializeAppVariables();
+
     // uSD Init
     //SDInit();
 
     DisplayBanner("AIRU NTP Test");
 
     // LED Init
-    GPIO_IF_LedConfigure(LED1);
-    GPIO_IF_LedConfigure(LED2);
-    GPIO_IF_LedConfigure(LED3);
+    GPIO_IF_LedConfigure(0x1);
+    GPIO_IF_LedConfigure(0x2);
+    GPIO_IF_LedConfigure(0x4);
 
     // Turn Off the LEDs
     GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
@@ -669,11 +678,11 @@ void main() {
 //    osi_TaskCreate(vOTATask, (const signed char*) "OTATask",
 //                   OSI_STACK_SIZE, NULL,NETWORK_CONFIG_TASK_PRIORITY, NULL);
 //
-//    osi_TaskCreate(vGetNTPTimeTask,(const signed char *)"GetNTPTimeTASK",
-//                   OSI_STACK_SIZE,NULL,1,NULL );
-
-    osi_TaskCreate(DataGatherTask, (const signed char*)"DataGatherTask",
-                   OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
+    osi_TaskCreate(vGetNTPTimeTask,(const signed char *)"GetNTPTimeTASK",
+                   OSI_STACK_SIZE,NULL,1,NULL );
+//
+//    osi_TaskCreate(DataGatherTask, (const signed char*)"DataGatherTask",
+//                   OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
 //
 //    osi_TaskCreate(vDataUploadTask, (const signed char*)"DataUploadTask",
 //                   OSI_STACK_SIZE, NULL, DATAUPLOAD_TASK_PRIORITY, NULL);

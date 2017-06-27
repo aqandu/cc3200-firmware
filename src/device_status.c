@@ -94,9 +94,9 @@ int ConnectionTest()
     SlPingReport_t PingReport;
     unsigned long ulIpAddr;
     // Set the ping parameters
-    PingParams.PingIntervalTime = 1000;
-    PingParams.PingSize = 10;
-    PingParams.PingRequestTimeout = 3000;
+    PingParams.PingIntervalTime = 100;
+    PingParams.PingSize = 1;
+    PingParams.PingRequestTimeout = 1000;
     PingParams.TotalNumberOfAttempts = 3;
     PingParams.Flags = 0;
 
@@ -129,7 +129,7 @@ int ConnectionTest()
 
     while (!g_uiPingDone)
     {
-
+        UART_PRINT("*");
     }
     
     if (g_uiPingPacketsRecv)
