@@ -142,10 +142,14 @@ int setApDomainName()
 //!    CONF_ERROR_NO_SUCH_COUNTRY_CODE (-4)
 //!
 //****************************************************************************
-int setSsidName()
+int setSsidName(char * UniqueID)
 {
 	int iretVal;
-	unsigned char  str[33] = "airu-test";
+	unsigned char  str[33] = "AirU-";
+	UniqueID += 6;
+	//char temp = UniqueID[5];
+	//strncpy(str, UniqueID, );
+	strcat(str, UniqueID);
 	unsigned short  length = strlen((const char *)str);
 	iretVal = sl_WlanSet(SL_WLAN_CFG_AP_ID, WLAN_AP_OPT_SSID, length, str);
 	return iretVal;

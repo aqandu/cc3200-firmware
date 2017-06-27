@@ -64,8 +64,8 @@ static int g_iInternetAccess = -1;     // TODO: does this ever get set back to -
 static unsigned long g_ulAirUIP;
 static unsigned long g_ulOTAIP;
 static unsigned int g_uiDeviceModeConfig = ROLE_STA;    //default is STA mode
-static unsigned char g_ucMacAddress[6*2+5+1];           // (#pairs*pair + colons + \0)
-static unsigned char g_ucUniqueID[6*2+1];               // like ^^^ but no colons
+static          char g_ucMacAddress[6*2+5+1];           // (#pairs*pair + colons + \0)
+static          char g_ucUniqueID[6*2+1];               // like ^^^ but no colons
 static unsigned char g_httpResponseBuff[MAX_BUFF_SIZE+1];
 static unsigned char g_ucUsrUpdateFWRequest = 0;
 
@@ -626,6 +626,7 @@ void InitializeAppVariables()
     g_ulStaIp = 0;
     g_ulGatewayIP = 0;
     g_uiDeviceModeConfig = ROLE_STA;
+    g_iInternetAccess = -1;
     memset(g_ucConnectionSSID,0,sizeof(g_ucConnectionSSID));
     memset(g_ucConnectionBSSID,0,sizeof(g_ucConnectionBSSID));
 
@@ -727,6 +728,11 @@ long Wlan_Connect() {
     lRetVal = sl_Start(NULL, NULL, NULL);
     ASSERT_ON_ERROR(lRetVal);
 
+    InitializeAppVariables();
+
+    lRetVal = setSsidName(g_ucUniqueID);
+    ASSERT_ON_ERROR(lRetVal);
+
     if (g_uiDeviceModeConfig == ROLE_AP) {
         UART_PRINT("Force AP Jumper is Connected.\n\r");
 
@@ -783,8 +789,8 @@ long Wlan_Connect() {
 
         UART_PRINT("Device has been put into STA Mode.\n\r");
 
-        lRetVal = registerMdnsService();
-        ASSERT_ON_ERROR(lRetVal);
+//        lRetVal = registerMdnsService();
+//        ASSERT_ON_ERROR(lRetVal);
 
         // Stop Internal HTTP Server
         lRetVal = sl_NetAppStop(SL_NET_APP_HTTP_SERVER_ID);

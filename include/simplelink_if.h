@@ -46,7 +46,7 @@ int getDeviceTimeDate();
 
 int setDeviceName();
 int setApDomainName();
-int setSsidName();
+int setSsidName(char * UniqueID);
 int setDeviceTimeDate();
 
 int registerMdnsService();

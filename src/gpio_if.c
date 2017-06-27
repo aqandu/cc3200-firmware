@@ -1,38 +1,37 @@
-//*****************************************************************************
 // gpio_if.c
 //
 // GPIO interface APIs, this common interface file helps to configure,
 // set/toggle only 3 GPIO pins which are connected to 3 LEDs of CC32xx Launchpad
 //
-// Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/ 
-// 
-// 
-//  Redistribution and use in source and binary forms, with or without 
-//  modification, are permitted provided that the following conditions 
+// Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com/
+//
+//
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
 //  are met:
 //
-//    Redistributions of source code must retain the above copyright 
+//    Redistributions of source code must retain the above copyright
 //    notice, this list of conditions and the following disclaimer.
 //
 //    Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the 
-//    documentation and/or other materials provided with the   
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the
 //    distribution.
 //
 //    Neither the name of Texas Instruments Incorporated nor the names of
 //    its contributors may be used to endorse or promote products derived
 //    from this software without specific prior written permission.
 //
-//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
-//  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+//  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 //  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-//  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
-//  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-//  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+//  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+//  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+//  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 //  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 //  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-//  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-//  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+//  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+//  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 //  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
@@ -62,7 +61,7 @@
 #include "gpio_if.h"
 
 //****************************************************************************
-//                      GLOBAL VARIABLES                                   
+//                      GLOBAL VARIABLES
 //****************************************************************************
 static unsigned long ulReg[]=
 {
@@ -87,7 +86,7 @@ unsigned char g_ucLED1Pin,g_ucLED2Pin,g_ucLED3Pin,g_ucJ9Pin;
 
 
 //****************************************************************************
-//                      LOCAL FUNCTION DEFINITIONS                          
+//                      LOCAL FUNCTION DEFINITIONS
 //****************************************************************************
 
 static unsigned char
@@ -328,8 +327,8 @@ void GPIO_IF_LedToggle(unsigned char ucLedNum)
 //! \param ucPin is the pin to be set-up as a GPIO (0:39)
 //! \param puiGPIOPort is the pointer to store GPIO port address return value
 //! \param pucGPIOPin is the pointer to store GPIO pin return value
-//! 
-//! This function  
+//!
+//! This function
 //!    1. Return the GPIO port address and pin for a given external pin number
 //!
 //! \return None.
@@ -360,8 +359,8 @@ GPIO_IF_GetPortNPin(unsigned char ucPin,
 //! \param ucGPIOPin is the GPIO pin of the specified port
 //! \param uiIntType is the type of the interrupt (refer gpio.h)
 //! \param pfnIntHandler is the interrupt handler to register
-//! 
-//! This function  
+//!
+//! This function
 //!    1. Sets GPIO interrupt type
 //!    2. Registers Interrupt handler
 //!    3. Enables Interrupt
@@ -383,13 +382,13 @@ GPIO_IF_ConfigureNIntEnable(unsigned int uiGPIOPort,
     //
     // Register Interrupt handler
     //
-#if defined(USE_TIRTOS) || defined(USE_FREERTOS) || defined(SL_PLATFORM_MULTI_THREADED) 
+#if defined(USE_TIRTOS) || defined(USE_FREERTOS) || defined(SL_PLATFORM_MULTI_THREADED)
     // USE_TIRTOS: if app uses TI-RTOS (either networking/non-networking)
     // USE_FREERTOS: if app uses Free-RTOS (either networking/non-networking)
     // SL_PLATFORM_MULTI_THREADED: if app uses any OS + networking(simplelink)
     osi_InterruptRegister(GetPeripheralIntNum(uiGPIOPort),
                                         pfnIntHandler, INT_PRIORITY_LVL_1);
-                
+
 #else
 	MAP_IntPrioritySet(GetPeripheralIntNum(uiGPIOPort), INT_PRIORITY_LVL_1);
     MAP_GPIOIntRegister(uiGPIOPort,pfnIntHandler);
@@ -410,14 +409,14 @@ GPIO_IF_ConfigureNIntEnable(unsigned int uiGPIOPort,
 //! \param uiGPIOPort is the GPIO port address
 //! \param ucGPIOPin is the GPIO pin of the specified port
 //! \param ucGPIOValue is the value to be set
-//! 
-//! This function  
+//!
+//! This function
 //!    1. Sets a value to the specified GPIO pin
 //!
 //! \return None.
 //
 //****************************************************************************
-void 
+void
 GPIO_IF_Set(unsigned char ucPin,
              unsigned int uiGPIOPort,
              unsigned char ucGPIOPin,
