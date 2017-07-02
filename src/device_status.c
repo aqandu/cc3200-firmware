@@ -107,7 +107,7 @@ int ConnectionTest()
     /* Check for Internet connection */
     /* Querying for google.com IP address */
     UART_PRINT("Querying for google.com IP address.\n\r");
-    iStatus = sl_NetAppDnsGetHostByName((signed char *)"www.google.com",
+    iStatus = sl_NetAppDnsGetHostByName((signed char *)"www.reddit.com",
                                            14, &ulIpAddr, SL_AF_INET);
 
     if (iStatus < 0)
@@ -129,7 +129,7 @@ int ConnectionTest()
 
     while (!g_uiPingDone)
     {
-        UART_PRINT("*");
+        //UART_PRINT("*");
     }
     
     if (g_uiPingPacketsRecv)

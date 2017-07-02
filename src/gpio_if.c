@@ -124,10 +124,7 @@ void
 GPIO_IF_LedConfigure(unsigned char ucPins)
 {
 
-  // configure J9 pin
-  GPIO_IF_GetPortNPin(GPIO_J9,
-                            &g_uiJ9Port,
-                            &g_ucJ9Pin);
+
   if(ucPins & LED1)
   {
     GPIO_IF_GetPortNPin(GPIO_LED1,

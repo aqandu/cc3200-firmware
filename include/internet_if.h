@@ -35,7 +35,8 @@ extern void SimpleLinkHttpServerCallback(SlHttpServerEvent_t *pSlHttpServerEvent
 extern void InitializeAppVariables();
 static int Wlan_ConfigureMode(int iMode);
 static void Wlan_ReadDeviceConfiguration(void);
-extern long Wlan_Connect(void);
+extern int Wlan_NetworkTest(void);
+extern long ConnectToNetwork(void);
 extern long Wlan_Disconnect(void);
 extern int Wlan_IsInternetAccess(void);
 extern long Net_IpConfigGet(unsigned long *aucIP, unsigned long *aucSubnetMask,

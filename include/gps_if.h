@@ -30,6 +30,7 @@
 
 #define GPS             UARTA0_BASE
 #define GPS_PERIPH      PRCM_UARTA0
+#define GPS_nRST_PIN    10
 
 //
 #define ConsoleGetChar()     MAP_UARTCharGet(CONSOLE)
@@ -55,7 +56,9 @@
 #define PMTK_STANDBY "$PMTK161,0*28\r\n"
 #define PMTK_AWAKE "$PMTK010,002*2D\r\n"
 //set RTC UTC time
-#define PMTK_API_SET_RTC_TIME " $PMTK335,2007,1,1,0,0,0*02\r\n"
+#define PMTK_API_SET_RTC_TIME "$PMTK335,2007,1,1,0,0,0*02\r\n"
+//get RTC UTC time
+#define PMTK_API_GET_RTC_TIME "$PMTK435*30\r\n"
 
 typedef struct
 {
@@ -63,7 +66,14 @@ typedef struct
     unsigned char hour;
     unsigned char minute;
     unsigned char seconds;
-}gps_world_time;
+}sGPSTime;
+
+typedef struct
+{
+    int year;
+    int month;
+    int day;
+}sGPSDate;
 
 typedef struct
 {
@@ -72,26 +82,26 @@ typedef struct
     int     longitude_degrees;
     float   longitude_minutes;
     float   altitude_meters;
-}global_position;
+}sGlobalPosition;
 
-struct GPGGA_data_struct
+struct sGPGGA_data
 {
-    global_position coordinates;
+    sGlobalPosition coordinates;
     unsigned char satellites;
-    gps_world_time time;
-    unsigned long date;
+    sGPSTime time;
+    sGPSDate date;
+    unsigned long ulDateTime;
     unsigned char pos_ind;
     float HDOP;
     float geoidheight;
 };
 
-struct GPGGA_data_struct GPGGA_data;
-static const struct GPGGA_data_struct GPGGA_empty;
-
-extern void InitGPS(void);
+extern void InitGPS(int);
 extern long sendCommand(const char*);
 extern void receivePacket(void);
+extern long getPacket(char*,int);
 extern long parse(char *);
+extern void spit(void);
 //extern void common_init(void);
 //extern int newNMEAreceived();
 //extern char *lastNMEA(void);
@@ -100,23 +110,13 @@ extern int parseHex(char c);
 //extern int standby(void);
 //extern int wakeup(void);
 extern void DEBUGprintPacket(int,const char *);
+extern void GPS_GetDateTime(char *uc_timestamp);
+extern void DEBUGprintDateTime(void);
+extern long GPSGetDateAndTime(char *cDate, char *cTime);
+void GPS_GetGlobalCoords(float *coords);
 
 
- int hour, minute, seconds, year, month, day;
- long milliseconds;
- // Floating point latitude and longitude value in degrees.
- float latitude, longitude;
- // Fixed point latitude and longitude value with degrees stored in units of 1/100000 degrees,
- // and minutes stored in units of 1/100000 degrees.  See pull #13 for more details:
- //   https://github.com/adafruit/Adafruit-GPS-Library/pull/13
- long latitude_fixed, longitude_fixed;
- float latitudeDegrees, longitudeDegrees;
- float geoidheight, altitude;
- float speed, angle, magvariation, HDOP;
- char lat, lon, mag;
- int fix;
- int paused;
- int fixquality, satellites;
+
 
 
 

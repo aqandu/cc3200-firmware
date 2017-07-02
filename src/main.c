@@ -44,6 +44,7 @@
 #include "HDC1080.h"
 #include "OPT3001.h"
 #include "pms_if.h"
+#include "gps_if.h"
 #include "app_utils.h"
 
 //#include "handlers.h"
@@ -76,6 +77,9 @@
 #define MCU_STAT_2_LED_GPIO 10
 #define MCU_STAT_3_LED_GPIO 11
 
+// GPS stuff
+#define GPS_NO_INT  1
+
 
 //*****************************************************************************
 //                      LOCAL FUNCTION PROTOTYPES
@@ -95,6 +99,8 @@ HTTPCli_Struct InfluxDBhttpClient;
 HTTPCli_Struct OTAhttpClient;
 influxDBDataPoint dataPoint;
 unsigned short g_usTimerInts;
+
+unsigned char ucHasPreviouslyConnectedToNetwork = 0;
 
 typedef enum {
     LED_OFF = 0,
@@ -227,6 +233,9 @@ void vGetNTPTimeTask(void *pvParameters)
             SKT_CloseSocket(iSocketDesc);
 
         }
+        else{
+            UART_PRINT("\tWaiting on internet access...\n\r");
+        }
         osi_Sleep(5000);
     }
 }
@@ -261,17 +270,44 @@ static void DisplayBanner(char * AppName) {
 //****************************************************************************
 static void NetworkConfigTask(void *pvParameters) {
     long lRetVal = -1;
-
-    lRetVal = Wlan_Connect();
+    UART_PRINT("Network Config Task...\n\r");
+    lRetVal = ConnectToNetwork();
     if (lRetVal < 0) {
         while(1){
-            Message("Could not connect to network...\n\r");
+            Message("\tCould not connect to network...\n\r");
+            osi_Sleep(60000);
         }
     }
+    else if(lRetVal == SUCCESS){
+        ucHasPreviouslyConnectedToNetwork = 1;
+    }
+
     while(1){
-        osi_Sleep(15000);
+        UART_PRINT("Network Config Task...\n\r");
+        osi_Sleep(60000);
+        if(Wlan_NetworkTest() != SUCCESS && ucHasPreviouslyConnectedToNetwork){
+            UART_PRINT("\t[WLAN] Bad Connection... Attempting to reconnect...\n\r");
+            lRetVal = ConnectToNetwork();
+            if (lRetVal < 0) {
+                UART_PRINT("\tCould not connect to network...\n\r");
+            }
+        }
     }
 }
+
+//static void vGPSTestTask(void *pvParameters)
+//{
+//    char cDate[20],cTime[20];
+//
+//    sendCommand(PMTK_SET_NMEA_OUTPUT_OFF);
+//    osi_Sleep(100);
+//
+//    while(1){
+//        osi_Sleep(1000);
+//        GPSGetDateAndTime(cDate, cTime);
+//        UART_PRINT("Date: %s\n\rTime: %s\033[F",cDate,cTime);
+//    }
+//}
 
 //****************************************************************************
 //
@@ -283,8 +319,10 @@ static void NetworkConfigTask(void *pvParameters) {
 //  TODO: Currently writing single data measurement every ? seconds to SD
 //          Want multiple data samples to get uploaded instead
 //
+//  TODO: Store directly into 'dataPoint' variable
+//
 //****************************************************************************
-static void DataGatherTask(void *pvParameters)
+static void vDataGatherTask(void *pvParameters)
 {
     long lRetVal = 0;
     static unsigned short pm_buf[3] = {0};
@@ -294,27 +332,38 @@ static void DataGatherTask(void *pvParameters)
     float humidity = 0;
     float last_temp = 0;
     float last_hum = 0;
+    float fGPSCoords[5] = {0};
     unsigned long tempErrorCode = 0;
 
-    char* header = "Sample,PM_01,PM_2.5,PM_10,Temp,Humidity\n\r";
+    char* header = "Timestamp,PM_01,PM_2.5,PM_10,Temp,Humidity,Latitude,Longitude,Altitude\n\r";
     int btw_header = strlen(header);
 
     unsigned char LED_ON = 0;
 
     while (1)   // Enter the task loop
     {
+       UART_PRINT("Data Gather Task...\n\r");
+
+       // let this one marinate for a minute
+       sendCommand(PMTK_SET_NMEA_OUTPUT_GGA);
+
         // reset variables
         tempErrorCode = 0; // reset the error code
 
-        // Sleep for 15 seconds
-        //osi_Sleep(DATA_GATHER_SLEEP);
-        osi_Sleep(5000);
 
-if (SUCCESS == Wlan_IsInternetAccess()){
+        //osi_Sleep(DATA_GATHER_SLEEP);
+        osi_Sleep(60000);   // sleep 1 minute
+
+if (SUCCESS == Wlan_IsInternetAccess()){    // wait for internet access
+
 /*************************************************************************
  * PMS DATA ACQUISITION
  **************************************************************************/
+        UART_PRINT("\tCollecting PMS Data...\n\r");
         PMSSampleGet(pm_buf);
+        dataPoint.pm1   = pm_buf[0];
+        dataPoint.pm2_5 = pm_buf[1];
+        dataPoint.pm10  = pm_buf[2];
 //
 //        if(tempErrorCode)       // for debugging
 //        {
@@ -324,6 +373,7 @@ if (SUCCESS == Wlan_IsInternetAccess()){
 /*************************************************************************
  * TEMPERATURE & HUMIDITY DATA ACQUISITION
  **************************************************************************/
+        UART_PRINT("\tCollecting I2C Data...\n\r");
         I2C_IF_Open(I2C_MASTER_MODE_STD);
 
         // Get temperature
@@ -338,6 +388,9 @@ if (SUCCESS == Wlan_IsInternetAccess()){
 
         I2C_IF_Close(I2C_MASTER_MODE_STD);
 
+        dataPoint.temperature = temperature;
+        dataPoint.humidity = humidity;
+
 /*************************************************************************
  * AMBIENT LIGHT DATA ACQUISITION | TODO: get light module working
  **************************************************************************/
@@ -347,13 +400,23 @@ if (SUCCESS == Wlan_IsInternetAccess()){
  **************************************************************************/
 
 /*************************************************************************
- * GPS DATA ACQUISITION | TODO: GPS lat, lon, alt, time
+ * GPS DATA ACQUISITION | TODO: time
  **************************************************************************/
+        UART_PRINT("\tCollecting GPS Data...\n\r");
+        GPS_GetGlobalCoords(fGPSCoords);
+
+        // lat & lon are hhmm.mmm
+        if (fGPSCoords[4]!=0){
+            dataPoint.altitude  = fGPSCoords[4];
+            dataPoint.latitude  = fGPSCoords[0]*100+fGPSCoords[1];
+            dataPoint.longitude = fGPSCoords[2]*100+fGPSCoords[3];
+        }
 
 /*************************************************************************
  * GET TIME | TODO: time: ntp server? GPS? both?
  * NOTE: this needs to come last, and right next to GPS so times sync up
  **************************************************************************/
+        UART_PRINT("\tGetting Timestamp...\n\r");
         lRetVal = NTP_GetServerTime();
 
 /*************************************************************************
@@ -366,13 +429,17 @@ if (SUCCESS == Wlan_IsInternetAccess()){
 
         char* csv = (char*)malloc(250); /* Allocate 250 bytes: 'sprintf' will clean up extra.
                                          * malloc() for heap allocation, instead of stack */
-        char cTimestamp[9];
-        char cDatestamp[11];
-        NTP_GetTime(&cTimestamp[0]);
+        char cTimestamp[20];
+        char cDatestampFN[20];          // file name date stamp
+        NTP_GetTime(cTimestamp);
 
-        sprintf(csv, "%s,%i,%i,%i,%f,%f\n\r", cTimestamp, pm_buf[0], pm_buf[1], pm_buf[2],temperature,humidity);
+        sprintf(csv, "%s,%i,%i,%i,%.2f,%.2f,%i%.3f,%i%.3f,%.2f\n\r",    cTimestamp, pm_buf[0], pm_buf[1], pm_buf[2],\
+                                                                        temperature,humidity,                       \
+                                                                        (int)fGPSCoords[0],fGPSCoords[1],           \
+                                                                        (int)fGPSCoords[2],fGPSCoords[3],           \
+                                                                        fGPSCoords[4]);
         //sprintf(csv,"%i temp: %f\thumi: %f",sample++,temperature,humidity);
-        //Report("%s\n\r",csv);
+        Report("\tStored Data:\n\r\t\t%s\n\r",csv);
 
         int btw = strlen(csv);
 
@@ -382,10 +449,12 @@ if (SUCCESS == Wlan_IsInternetAccess()){
          * TODO create file for each new day using GPS
          * This will propose a problem though if date doesn't get set
          */
-        NTP_GetDate(&cDatestamp[0]);
-        res = f_append(&fp, cDatestamp);
+        NTP_GetDate(cDatestampFN);
+        strcat(cDatestampFN,".csv");
+        res = f_append(&fp, "logfile.csv");
         if (res == FR_OK)
         {
+            UART_PRINT("\tWriting...\n\r");
             if(firstTime){
                 res = f_write(&fp,header,btw_header,&Size);
                 firstTime = 0;
@@ -394,19 +463,14 @@ if (SUCCESS == Wlan_IsInternetAccess()){
             res = f_write(&fp,csv,btw,&Size);   /* Append a line */
 
             res = f_close(&fp);                 /* Close the file */
-
-            if(LED_ON){
-                LED_ON = 0;
-                GPIO_IF_LedOff(MCU_STAT_1_LED_GPIO);
-            }
-            else{
-                LED_ON = 1;
-                GPIO_IF_LedOn(MCU_STAT_1_LED_GPIO);
-            }
         }
 
         free(csv);  /* free the data pointer */
+
 } // end if (internet access)
+else{
+    UART_PRINT("\tWaiting on internet access...\n\r");
+}
     } // end while(1)
 }
 
@@ -425,8 +489,9 @@ static void vOTATask(void *pvParameters)
     while(1){
         if(SUCCESS == Wlan_IsInternetAccess() && 1 == OTA_getOTAUpdateFlag()){
 
-            osi_EnterCritical();
+            //osi_EnterCritical();
             OTA_setOTAUpdateFlag(0);
+            UART_PRINT("Connecting to HTTP Client\n\r");
             lRetVal = HTTP_InitOTAHTTPClient(&OTAhttpClient);
             if(lRetVal<0){
                 UART_PRINT("Couldn't connect to OTA Client\n\r\t");
@@ -440,7 +505,7 @@ static void vOTATask(void *pvParameters)
             }
             else{
                 UART_PRINT("File download complete, rebooting...\n\r");
-                osi_ExitCritical(1);
+                //osi_ExitCritical(1);
                 RebootMCU();
             }
         }
@@ -459,9 +524,20 @@ static void vOTATask(void *pvParameters)
 static void vDataUploadTask(void *pvParameters)
 {
     long lRetVal = 0;
+//    dataPoint.pm1 = 1;
+//    dataPoint.pm2_5 = 2;
+//    dataPoint.pm10 = 10;
+//    dataPoint.temperature = 24.55;
+//    dataPoint.humidity = 30.33;
+//    dataPoint.longitude = -11152.86;
+//    dataPoint.latitude = 4045.28;
+//    dataPoint.altitude = 1246.6;
+
     while(1){
-        if(Wlan_IsInternetAccess() == 0){
+        osi_Sleep(30*60*1000); // half hour
+        if(Wlan_IsInternetAccess() == SUCCESS){
             UART_PRINT("DataUploadTask...\n\r");
+            UART_PRINT("---------------------------------------\n\r");
 
             lRetVal = HTTP_InitInfluxHTTPClient(&InfluxDBhttpClient);
             if(lRetVal<0){
@@ -478,7 +554,6 @@ static void vDataUploadTask(void *pvParameters)
         else{
             UART_PRINT("DataUploadTask waiting on internet access...\n\r");
         }
-        osi_Sleep(5000);
     }
 }
 
@@ -633,6 +708,14 @@ static void BlinkTask(void *pvParameters)
 }
 void main() {
 
+    unsigned int puiGPIOPort;
+    unsigned char pucGPIOPin;
+    char packet[120] = {0};
+    long lRetVal = -1;
+    char line[30];
+    memset(line,'-',sizeof(line));
+    line[29] = '\0';
+
 /*****************************************************************************
  * Initialization Section
  ****************************************************************************/
@@ -646,13 +729,14 @@ void main() {
     PinConfigSet(PIN_58, PIN_STRENGTH_2MA | PIN_STRENGTH_4MA, PIN_TYPE_STD_PD);
 
     InitPMS();
+    InitGPS( 0 /*GPS_NO_INT*/ );
 
     InitializeAppVariables();
 
     // uSD Init
-    //SDInit();
+    SDInit();
 
-    DisplayBanner("AIRU NTP Test");
+    DisplayBanner("AIRU Test");
 
     // LED Init
     GPIO_IF_LedConfigure(0x1);
@@ -666,30 +750,34 @@ void main() {
     g_ucLEDStatus = LED_OFF;
     //GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 
+
+
 /*****************************************************************************
  * RTOS Task Section
  ****************************************************************************/
-
+//
     VStartSimpleLinkSpawnTask(SPAWN_TASK_PRIORITY);
-
+//
+//    osi_TaskCreate(vGPSTestTask, (const signed char*) "GPSTestTask",
+//                   OSI_STACK_SIZE, NULL, 3, NULL);
+//
     osi_TaskCreate(NetworkConfigTask, (const signed char*) "NetworkConfigTask",
                    OSI_STACK_SIZE, NULL, NETWORK_CONFIG_TASK_PRIORITY, NULL);
 //
 //    osi_TaskCreate(vOTATask, (const signed char*) "OTATask",
-//                   OSI_STACK_SIZE, NULL,NETWORK_CONFIG_TASK_PRIORITY, NULL);
+//                   2*OSI_STACK_SIZE, NULL,NETWORK_CONFIG_TASK_PRIORITY, NULL);
 //
-    osi_TaskCreate(vGetNTPTimeTask,(const signed char *)"GetNTPTimeTASK",
-                   OSI_STACK_SIZE,NULL,1,NULL );
+//    osi_TaskCreate(vGetNTPTimeTask,(const signed char *)"GetNTPTimeTASK",
+//                   OSI_STACK_SIZE,NULL,1,NULL );
 //
-//    osi_TaskCreate(DataGatherTask, (const signed char*)"DataGatherTask",
-//                   OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
+    osi_TaskCreate(vDataGatherTask, (const signed char*)"DataGatherTask",
+                   OSI_STACK_SIZE, NULL, DATAGATHER_TASK_PRIORITY, NULL);
 //
-//    osi_TaskCreate(vDataUploadTask, (const signed char*)"DataUploadTask",
-//                   OSI_STACK_SIZE, NULL, DATAUPLOAD_TASK_PRIORITY, NULL);
+    osi_TaskCreate(vDataUploadTask, (const signed char*)"DataUploadTask",
+                   OSI_STACK_SIZE, NULL, DATAUPLOAD_TASK_PRIORITY, NULL);
 
     //
     // Start OS Scheduler
     //
     osi_start();
-
 }
