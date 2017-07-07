@@ -32,7 +32,7 @@
 #include "app_utils.h"
 //#include "internet_if.h"
 #include "influxdb.h"
-#include "ota.h"
+//#include "ota.h"
 #include "smartconfig.h"
 
 // HTTP Client lib
@@ -41,6 +41,13 @@
 
 // JSON Parser
 #include "jsmn.h"
+
+#define OTA_PORT                (3000)
+#define OTA_DNS_NAME            "air.eng.utah.edu"
+#define OTA_BIN_SERVER_DIR      "/files/updates/airu-firmware.bin"
+#define OTA_BIN_FS_NAME         "/sys/mcuimg2.bin"
+#define FW_VER                  "0.9.1"
+#define HW_VER                  "1.1"
 
 #define AUTO_CONNECTION_TIMEOUT_COUNT   50      /* 5 Sec */
 #define SL_STOP_TIMEOUT                 200
@@ -70,6 +77,7 @@ static char g_ucUniqueID[6 * 2 + 1];               // like ^^^ but no colons
 static unsigned char g_httpResponseBuff[MAX_BUFF_SIZE + 1];
 static unsigned char g_ucUsrUpdateFWRequest = 0;
 
+
 //!    ######################### list of SNTP servers ##################################
 //!    ##
 //!    ##          hostname         |        IP       |       location
@@ -87,13 +95,13 @@ static unsigned char g_ucUsrUpdateFWRequest = 0;
 const char g_acSNTPserver[30] = "wwv.nist.gov"; //Add any one of the above servers
 
 // Sunday is the 1st day in 2017 - the relative year
-const char g_acDaysOfWeek2017[7][3] = { { "Sun" }, { "Mon" }, { "Tue" },
-        { "Wed" }, { "Thu" }, { "Fri" }, { "Sat" } };
-const char g_acMonthOfYear[12][3] = { { "Jan" }, { "Feb" }, { "Mar" },
-        { "Apr" }, { "May" }, { "Jun" }, { "Jul" }, { "Aug" }, { "Sep" }, {
-                "Oct" }, { "Nov" }, { "Dec" } };
-const char g_acNumOfDaysPerMonth[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31,
-        30, 31 };
+const char g_acDaysOfWeek2017[7][3] = { { "Sun" }, { "Mon" }, { "Tue" }, { "Wed" },
+                                        { "Thu" }, { "Fri" }, { "Sat" } };
+const char g_acMonthOfYear[12][3]   = { { "Jan" }, { "Feb" }, { "Mar" }, { "Apr" },
+                                        { "May" }, { "Jun" }, { "Jul" }, { "Aug" },
+                                        { "Sep" }, { "Oct" }, { "Nov" }, { "Dec" } };
+const char g_acNumOfDaysPerMonth[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31,30, 31 };
+
 // socket variables
 SlSockAddr_t sAddr;
 SlSockAddrIn_t sLocalAddr;
@@ -691,6 +699,7 @@ long ConnectToNetwork() {
     setDeviceName();
     setApDomainName();
 
+    lRetVal = Wlan_ConfigureMode(ROLE_STA);
     // Device is in AP Mode
     if (ROLE_STA != lRetVal) {
         if (ROLE_AP == lRetVal) {
@@ -1470,11 +1479,13 @@ int HTTP_PostMethod(HTTPCli_Handle httpClient, influxDBDataPoint data) {
 
     // Construct HTTP POST Body
     unsigned char postString[250];
-    sprintf((char*) postString, POST_DATA_AIR, g_ucUniqueID, data.pm1, data.pm2_5, data.pm10,   \
-                                                data.temperature, data.humidity,               \
-                                                data.latitude, data.longitude, data.altitude);
-    UART_PRINT("POST DATA: %s\n\r", postString); //- debugging
-    // UART_PRINT("\n\r");
+    sprintf((char*) postString, POST_DATA_AIR, g_ucUniqueID, HW_VER, FW_VER,                \
+                                               data.altitude, data.latitude, data.longitude,\
+                                               data.pm1, data.pm2_5, data.pm10,             \
+                                               data.temperature, data.humidity);
+
+
+    UART_PRINT("POST DATA: \n\r\t%s\n\r", postString); //- debugging
 
     sprintf((char *) tmpBuf, "%d", (strlen((char*) postString)));
 
@@ -2035,6 +2046,7 @@ long GetSNTPTime() {
         // UART_PRINT("\n\r");
         // UART_PRINT("\n\r");
         UART_PRINT(g_sSNTPData.acTimeStore);
+        UART_PRINT("\n\r-----------------------------------------------------------\n\r");
 //        char cTimestamp[20];
 //        //char* tsptr = &cTimestamp[0];
 //        NTP_GetDateTime(&cTimestamp[0]);
@@ -2073,11 +2085,11 @@ void NTP_GetDateTime(char *uc_timestamp) {
     // Year
     us_CCLen = itoa(g_sSNTPData.uisYear, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Month
-    us_CCLen = itoa(g_sSNTPData.uisMonth, uc_timestamp);
+    us_CCLen = itoa(g_sSNTPData.uisMonth+1, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Day
     us_CCLen = itoa(g_sSNTPData.uisDay, uc_timestamp);
     uc_timestamp += us_CCLen;
@@ -2085,11 +2097,11 @@ void NTP_GetDateTime(char *uc_timestamp) {
     // Hour
     us_CCLen = itoa(g_sSNTPData.uisHour, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Minute
     us_CCLen = itoa(g_sSNTPData.uisMinute, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Second
     us_CCLen = itoa(g_sSNTPData.uisSecond, uc_timestamp);
     uc_timestamp += us_CCLen;
@@ -2104,11 +2116,11 @@ void NTP_GetTime(char *uc_timestamp) {
     // Hour
     us_CCLen = itoa(g_sSNTPData.uisHour, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Minute
     us_CCLen = itoa(g_sSNTPData.uisMinute, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    *uc_timestamp++ = '-';
     // Second
     us_CCLen = itoa(g_sSNTPData.uisSecond, uc_timestamp);
     uc_timestamp += us_CCLen;
@@ -2121,17 +2133,19 @@ void NTP_GetTime(char *uc_timestamp) {
 void NTP_GetDate(char *uc_timestamp) {
     unsigned short us_CCLen;
     // Year
-    us_CCLen = itoa(g_sSNTPData.uisYear, uc_timestamp);
+    us_CCLen = itoa(g_sSNTPData.uisYear-2000, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
-    // Month
-    us_CCLen = itoa(g_sSNTPData.uisMonth, uc_timestamp);
+    //uc_timestamp++;
+    *uc_timestamp++ = '-';
+    // Month | *month is 0 indexed (Jan=0) so we need to add 1 for displaying*
+    us_CCLen = itoa(g_sSNTPData.uisMonth+1, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '_';
+    //uc_timestamp++;
+    *uc_timestamp++ = '-';
     // Day
     us_CCLen = itoa(g_sSNTPData.uisDay, uc_timestamp);
     uc_timestamp += us_CCLen;
-    *uc_timestamp++ = '\0';
+    *uc_timestamp = '\0';
 
 }
 

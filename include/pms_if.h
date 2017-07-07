@@ -18,9 +18,8 @@ extern "C"
 #define PMS             UARTA1_BASE
 #define PMS_PERIPH      PRCM_UARTA1
 
-void PMSIntHandler(void);
 extern void InitPMS(void);
-extern unsigned long PMSSampleGet(unsigned short*);
+extern long PMSSampleGet(unsigned short, unsigned short, unsigned short);
 extern unsigned char PMSSampleCheckSum(unsigned char*);
 extern unsigned short PMSGetPM01(unsigned char*);
 extern unsigned short PMSGetPM2_5(unsigned char*);

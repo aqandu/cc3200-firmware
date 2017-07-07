@@ -47,9 +47,9 @@
 #define PM10_LOW            9
 
 // PMS error messages | TODO: errors should come from top level error enum
-#define ERROR_NO_ERROR          0UL
-#define ERROR_PMS_BAD_HEADER    1UL
-#define ERROR_PMS_BAD_CS        2UL
+#define ERROR_NO_ERROR           0L
+#define ERROR_PMS_BAD_HEADER    -1L
+#define ERROR_PMS_BAD_CS        -2L
 
 // GPIO stuff
 #define MCU_STAT_1_LED_GPIO 9
@@ -62,9 +62,9 @@
 //
 //*****************************************************************************
 unsigned char g_ucpmsRingBuf[RING_BUFFER_LENGTH] = {0};     // Ring buffer to hold data from PMS output
-unsigned int g_uiPM01  = 0;                 // PM data
-unsigned int g_uiPM2_5 = 0;
-unsigned int g_uiPM10  = 0;
+static unsigned int g_uiPM01  = 0;                 // PM data
+static unsigned int g_uiPM2_5 = 0;
+static unsigned int g_uiPM10  = 0;
 //*****************************************************************************
 //
 //! End Global Parameters
@@ -91,7 +91,7 @@ static void PMSIntHandler()
     MAP_UARTIntClear(PMS,UART_INT_RX);
 
 //  GPIO_IF_LedToggle(MCU_STAT_2_LED_GPIO);
-    GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
+//    GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 //  GPIO_IF_LedOn(MCU_STAT_2_LED_GPIO);
 //  GPIO_IF_LedOn(MCU_STAT_3_LED_GPIO);
 
@@ -113,7 +113,7 @@ static void PMSIntHandler()
     {
         ringBufIndex = 0;
     }
-    GPIO_IF_LedOff(MCU_STAT_2_LED_GPIO);
+//    GPIO_IF_LedOff(MCU_STAT_2_LED_GPIO);
 }
 
 //*****************************************************************************
@@ -165,8 +165,8 @@ InitPMS()
 //! \return ERROR_NUMBER
 //
 //*****************************************************************************
-unsigned long
-PMSSampleGet(unsigned short *pmsDataBuf)
+long
+PMSSampleGet(unsigned short PM01, unsigned short PM2_5, unsigned short PM10)
 {
     unsigned long lRetVal = 0;
     int ringBufIndex = 0;
@@ -219,19 +219,19 @@ PMSSampleGet(unsigned short *pmsDataBuf)
                 g_uiPM2_5 = PMSGetPM2_5(pmsSample);
                 g_uiPM10  = PMSGetPM10(pmsSample);
 
-                // and fill the caller's data buffer
-                pmsDataBuf[0] = g_uiPM01;
-                pmsDataBuf[1] = g_uiPM2_5;
-                pmsDataBuf[2] = g_uiPM2_5;
+                // and fill the caller's data
+                PM01  = g_uiPM01;
+                PM2_5 = g_uiPM2_5;
+                PM10  = g_uiPM10;
 
             }
 
             else    // Checksum error -- use old data
             {
-                // fill with old data
-                pmsDataBuf[0] = g_uiPM01;
-                pmsDataBuf[1] = g_uiPM2_5;
-                pmsDataBuf[2] = g_uiPM2_5;
+                // and fill the caller's data
+                PM01  = g_uiPM01;
+                PM2_5 = g_uiPM2_5;
+                PM10  = g_uiPM10;
 
                 lRetVal = ERROR_PMS_BAD_CS;
 

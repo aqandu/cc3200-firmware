@@ -9,17 +9,14 @@
 #include "utils.h"
 #include "uart_if.h"
 #include "app_utils.h"
+#include "common.h"     /* to use UART_PRINT() */
 
 //*****************************************************************************
 
 // how long are max NMEA lines to parse?
-#define MAXLINELENGTH 120
+#define MAXLINELENGTH 500
 #define TIME2017                3692217600u      /* 117 years + 29 leap days since 1900 */
 #define YEAR2017                2017
-#define HOUR_IN_DAY
-#define SEC_IN_MIN              60
-#define SEC_IN_HOUR             3600
-#define SEC_IN_DAY              SEC_IN_HOUR*HOUR_IN_DAY
 
 //*****************************************************************************
 //
@@ -67,6 +64,7 @@ static void GPSIntHandler()
     static unsigned char ucRingBufIndex = 0;
     static char bFoundMoney = 0;
     static unsigned int ucTransStart = 0;
+    int i;
     long lRetVal = -1;
     char cChar;
     //
@@ -86,11 +84,14 @@ static void GPSIntHandler()
     }
 
     // if we found the start and end of a transmission parse the message
-    if(cChar==0x0A && bFoundMoney) // '\n'
+    if(cChar=='\n' && bFoundMoney) // '\n'
     {
+
         bFoundMoney = 0;
         lRetVal = getPacket(packet,ucTransStart);
-        if (!lRetVal) parse(packet);
+        if (lRetVal == 0) {
+            parse(packet);
+        }
     }
 
     ucRingBufIndex++;
@@ -145,7 +146,6 @@ void InitGPS(int iGPS_NO_INT){
     //
     // Wait for GPS to respond
     //
-    UtilsDelay(8000000);
 }
 
 //*****************************************************************************
@@ -192,7 +192,7 @@ sendCommand(const char *packet){
 //
 //*****************************************************************************
 void receivePacket(void){
-    Report("Getting packet...\n\r");
+    //Report("Getting packet...\n\r");
     char response[250];
 
     while(GPSGetChar() != '$');
@@ -220,46 +220,17 @@ long getPacket(char *packet,int i)
     int k;              // used in for loop
     char cChar = '$';   // character from ring buffer
 
-    // seek start of packet
-    // we start where last packet left off
-    // and try MAXLINELENGTH steps
-    while(g_ucGPSRingBuf[i++] != '$')
-    {
-        if(i==MAXLINELENGTH) i=0;
-        if(++max==MAXLINELENGTH){
-            return -1;
-        }
-    }
-
     // copy packet up to '*'
-    while(cChar != '*')
+    while(cChar != '\n')
     {
         packet[j++] = cChar;
-        if (i==MAXLINELENGTH) i=0;          // loop back to start of buffer
+        if (++i==MAXLINELENGTH) i=0;          // loop back to start of buffer
         if (j==MAXLINELENGTH) return -1;    // filled up packet array, it's not good
-        cChar = g_ucGPSRingBuf[i++];
+        cChar = g_ucGPSRingBuf[i];
     }
-
-    // copy checksum
-    packet[j++] = '*';
-    for(k=0;k<2;k++)
-    {
-        packet[j++] = g_ucGPSRingBuf[i++];
-        if (i==MAXLINELENGTH) i=0;
-    }
-
-    // add <CR><LF> because apparently they don't always show up...
-    packet[j++] = '\r';
     packet[j++] = '\n';
     packet[j] = '\0';
 
-    // move pointer to the end of this transmission
-    i += j;
-    if(i>=MAXLINELENGTH) i -= MAXLINELENGTH;
-
-    //Report("Packet:\n\r\t%s\n\r",packet);
-
-    //memset(g_ucGPSRingBuf,0,sizeof(g_ucGPSRingBuf));
     return 0;
 
 }
@@ -274,6 +245,7 @@ long getPacket(char *packet,int i)
 //
 //*****************************************************************************
 int checksum(char *nmea){
+    //UART_PRINT("Packet:\n\r\t%s",nmea);
     if (nmea[strlen(nmea)-5] == '*'){
         unsigned char sum = parseHex(nmea[strlen(nmea)-4]) * 16;
         sum += parseHex(nmea[strlen(nmea)-3]);
@@ -309,18 +281,13 @@ int checksum(char *nmea){
 long parse(char *nmea) {
 
     long lRetVal = -1;
-
     //
     // Bad checksum
     //
-    if (!checksum(nmea))
-    {
-        //Report("Bad checksum\n\r");
-        return lRetVal;
-    }
+    if (!checksum(nmea)) return lRetVal;
 
     char coord_buff[8];
-    GPGGA_data = GPGGA_empty;
+    //GPGGA_data = GPGGA_empty;
 
     //
     // $GPGGA:
@@ -328,8 +295,8 @@ long parse(char *nmea) {
     // $GPGGA,064951.000,2307.1256,N,12016.4438,E,  1,  8,  0.95,39.9,M,17.8,M,,*65
     //
     if (strstr(nmea, "$GPGGA")) {
-        //Report("Found $GPGGA Header...\n\r");
         // found GGA
+        //UART_PRINT("Found GGA...\n\r");
         char *p = nmea;
         // get time
         p = strchr(p, ',')+1;
@@ -677,8 +644,6 @@ long GPSGetDateAndTime(char *cDate, char *cTime)
 
 void GPS_GetGlobalCoords(float *coords)
 {
-    sendCommand(PMTK_SET_NMEA_OUTPUT_GGA);
-    UtilsDelay(8000000);
     coords[0] = (float)GPGGA_data.coordinates.latitude_degrees;
     coords[1] = GPGGA_data.coordinates.latitude_minutes;
     coords[2] = (float)GPGGA_data.coordinates.longitude_degrees;

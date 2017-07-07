@@ -8,10 +8,9 @@
  //*****************************************************************************
 #define DEVICE_VERSION			"1.1.0"
 #define DEVICE_MANUFACTURE		"UOFU"
-#define DEVICE_NAME 			"dairu"
+#define DEVICE_NAME 			"airu"
 #define DEVICE_MODEL			"CC3200"
-#define DEVICE_AP_DOMAIN_NAME	"myairu.local"
-#define DEVICE_SSID_AP_NAME		"sairu"
+#define DEVICE_AP_DOMAIN_NAME	"www.myairu.local"
 
  //*****************************************************************************
  // mDNS Defines
